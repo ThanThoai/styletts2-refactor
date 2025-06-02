@@ -1,0 +1,61 @@
+F0_path: "utils/JDC/bst.t7"
+ASR_config: "utils/ASR/config.yml"
+ASR_path: "utils/ASR/bst_00080.pth"
+PLBERT_dir: "utils/PLBERT"
+
+KotoDama_Prompter_path: "utils/KTD/prompt_enc/checkpoint-73285"
+KotoDama_TextSampler_path: "utils/KTD/text_enc/checkpoint-22680"
+
+model_path: "Style_Tsukasa_v02/Top_ckpt_24khz.pth"
+
+model_params:
+  multispeaker: true
+
+  dim_in: 64 
+  hidden_dim: 512
+  max_conv_dim: 512
+  n_layer: 3
+  n_mels: 80
+
+  n_token: 178 # number of phoneme tokens
+  max_dur: 50 # maximum duration of a single phoneme
+  style_dim: 128 # style vector size
+  
+  dropout: 0.2
+
+  decoder: 
+    type: 'istftnet' # either hifigan or istftnet
+    resblock_kernel_sizes: [3,7,11]
+    upsample_rates :  [10, 6]
+    upsample_initial_channel: 512
+    resblock_dilation_sizes: [[1,3,5], [1,3,5], [1,3,5]]
+    upsample_kernel_sizes: [20, 12]
+    gen_istft_n_fft: 20
+    gen_istft_hop_size: 5
+
+
+      
+  # speech language model config
+  slm:
+      model: 'Respair/Whisper_Large_v2_Encoder_Block' # The model itself is hardcoded, change it through -> losses.py
+      sr: 16000 # sampling rate of SLM
+      hidden: 1280 # hidden size of SLM
+      nlayers: 33 # number of layers of SLM
+      initial_channel: 64 # initial channels of SLM discriminator head
+  
+  # style diffusion model config
+  diffusion:
+    embedding_mask_proba: 0.1
+    # transformer config
+    transformer:
+      num_layers: 3
+      num_heads: 8
+      head_features: 64
+      multiplier: 2
+
+    # diffusion distribution config
+    dist:
+      sigma_data: 0.2 # placeholder for estimate_sigma_data set to false
+      estimate_sigma_data: true # estimate sigma_data from the current batch if set to true
+      mean: -3.0
+      std: 1.0
