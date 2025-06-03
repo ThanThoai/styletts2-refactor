@@ -2,26 +2,27 @@ import torch
 from utils.phonemize.mixed_phon import smart_phonemize
 import omegaconf
 from models import (
-    load_ASR_models,
-    load_F0_models,
-    load_KotoDama_Prompter,
-    load_KotoDama_TextSampler,
+    # load_ASR_models,
+    # load_F0_models,
+    # load_KotoDama_Prompter,
+    # load_KotoDama_TextSampler,
     TextEncoder,
     ProsodyPredictor,
-    StyleEncoder,
+    # StyleEncoder,
     StyleTransformer1d,
     Transformer1d,
     AudioDiffusionConditional,
     LogNormalDistribution,
     KDiffusion,
-    MultiPeriodDiscriminator,
-    MultiResSpecDiscriminator,
-    WavLMDiscriminator,
+    # MultiPeriodDiscriminator,
+    # MultiResSpecDiscriminator,
+    # WavLMDiscriminator,
 )
 from utils.PLBERT.util import load_plbert
 from modules.istftnet import Decoder
 from text_utils import TextCleaner
 from modules.diffusion.sampler import DiffusionSampler, ADPM2Sampler, KarrasSchedule
+import soundfile as sf
 
 text_cleaner = TextCleaner()
 
@@ -42,13 +43,13 @@ class SPipeline:
     def __init__(self, config_path):
 
         self.config = omegaconf.OmegaConf.load(config_path)
-        asr_config = self.config.get("ASR_config", False)
-        asr_path = self.config.get("ASR_path", False)
+        # asr_config = self.config.get("ASR_config", False)
+        # asr_path = self.config.get("ASR_path", False)
         # print(asr_config, asr_path)
-        self.text_aligner = load_ASR_models(asr_path, asr_config)
+        # self.text_aligner = load_ASR_models(asr_path, asr_config)
 
-        F0_path = self.config.get("F0_path", False)
-        self.pitch_extractor = load_F0_models(F0_path)
+        # F0_path = self.config.get("F0_path", False)
+        # self.pitch_extractor = load_F0_models(F0_path)
 
         BERT_path = self.config.get("PLBERT_dir", False)
         self.bert = load_plbert(BERT_path)
@@ -56,17 +57,17 @@ class SPipeline:
             self.bert.config.hidden_size, self.config.model_params.hidden_dim
         )
 
-        self.prompter = load_KotoDama_Prompter(
-            path=self.config.get("KotoDama_Prompter_path", False)
-        )
-        self.text_sampler = load_KotoDama_TextSampler(
-            path=self.config.get("KotoDama_TextSampler_path", False)
-        )
+        # self.prompter = load_KotoDama_Prompter(
+        #     path=self.config.get("KotoDama_Prompter_path", False)
+        # )
+        # self.text_sampler = load_KotoDama_TextSampler(
+        #     path=self.config.get("KotoDama_TextSampler_path", False)
+        # )
 
         self.decoder = Decoder(
-            dim_in=self.config.model_params.decoder.get("hidden_dim", False),
-            style_dim=self.config.model_params.decoder.get("style_dim", False),
-            dim_out=self.config.model_params.decoder.get("n_mels", False),
+            dim_in=self.config.model_params.get("hidden_dim", False),
+            style_dim=self.config.model_params.get("style_dim", False),
+            dim_out=self.config.model_params.get("n_mels", False),
             resblock_kernel_sizes=self.config.model_params.decoder.get(
                 "resblock_kernel_sizes", False
             ),
@@ -105,16 +106,16 @@ class SPipeline:
             dropout=self.config.model_params.get("dropout", False),
         )
 
-        self.style_encoder = StyleEncoder(
-            dim_in=self.config.model_params.get("dim_in", False),
-            style_dim=self.config.model_params.get("style_dim", False),
-            max_conv_dim=self.config.model_params.get("hidden_dim", False),
-        )  # acoustic style encoder
-        self.predictor_encoder = StyleEncoder(
-            dim_in=self.config.model_params.get("dim_in", False),
-            style_dim=self.config.model_params.get("style_dim", False),
-            max_conv_dim=self.config.model_params.get("hidden_dim", False),
-        )  # prosodic style encoder
+        # self.style_encoder = StyleEncoder(
+        #     dim_in=self.config.model_params.get("dim_in", False),
+        #     style_dim=self.config.model_params.get("style_dim", False),
+        #     max_conv_dim=self.config.model_params.get("hidden_dim", False),
+        # )  # acoustic style encoder
+        # self.predictor_encoder = StyleEncoder(
+        #     dim_in=self.config.model_params.get("dim_in", False),
+        #     style_dim=self.config.model_params.get("style_dim", False),
+        #     max_conv_dim=self.config.model_params.get("hidden_dim", False),
+        # )  # prosodic style encoder
 
         if self.config.model_params.multispeaker:
             transformer = StyleTransformer1d(
@@ -151,14 +152,14 @@ class SPipeline:
         self.diffusion.diffusion.net = transformer
         self.diffusion.unet = transformer
 
-        self.mpd = MultiPeriodDiscriminator()
-        self.msd = MultiResSpecDiscriminator()
+        # self.mpd = MultiPeriodDiscriminator()
+        # self.msd = MultiResSpecDiscriminator()
 
-        self.wd = WavLMDiscriminator(
-            self.config.model_params.slm.hidden,
-            self.config.model_params.slm.nlayers,
-            self.config.model_params.slm.initial_channel,
-        )
+        # self.wd = WavLMDiscriminator(
+        #     self.config.model_params.slm.hidden,
+        #     self.config.model_params.slm.nlayers,
+        #     self.config.model_params.slm.initial_channel,
+        # )
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.diffusion_sampler = DiffusionSampler(
@@ -178,16 +179,17 @@ class SPipeline:
             "bert_encoder": self.bert_encoder,
             "predictor": self.predictor,
             "decoder": self.decoder,
-            "predictor_encoder": self.predictor_encoder,
-            "style_encoder": self.style_encoder,
+            # "predictor_encoder": self.predictor_encoder,
+            # "style_encoder": self.style_encoder,
             "diffusion": self.diffusion,
-            "text_aligner": self.text_aligner,
-            "pitch_extractor": self.pitch_extractor,
-            "mpd": self.mpd,
-            "msd": self.msd,
-            "wd": self.wd,
-            "KotoDama_Prompt": self.prompter,
-            "KotoDama_Text": self.text_sampler,
+            "text_encoder": self.text_encoder,
+            # "text_aligner": self.text_aligner,
+            # "pitch_extractor": self.pitch_extractor,
+            # "mpd": self.mpd,
+            # "msd": self.msd,
+            # "wd": self.wd,
+            # "KotoDama_Prompt": self.prompter,
+            # "KotoDama_Text": self.text_sampler,
         }
         params_whole = torch.load(model_path, map_location="cpu")
         params = params_whole["net"]
@@ -200,8 +202,8 @@ class SPipeline:
 
                 state_dict = params[k]
                 new_state_dict = OrderedDict()
-                for k, v in state_dict.items():
-                    name = k.replace("module.", "")
+                for key, v in state_dict.items():
+                    name = key.replace("module.", "")
                     new_state_dict[name] = v
                 model_dict[k].load_state_dict(new_state_dict, strict=False)
             print(f"Loaded {k} from {model_path}")
@@ -216,12 +218,14 @@ class SPipeline:
 
     def get_style(self, pack, phonemize):
         len_phonemize = len(phonemize)
+        print("len_phonemize", len_phonemize)
         s_style = list(pack.keys())
-
-        list_distance = [abs(len_phonemize - len(pack[s])) for s in s_style]
+        print("s_style", s_style)
+        list_distance = [abs(len_phonemize - s) for s in s_style]
         min_distance = min(list_distance)
         min_index = list_distance.index(min_distance)
-        style = s_style[min_index]
+        print(s_style[min_index])
+        style = pack[s_style[min_index]]
         return style
 
     def generate(
@@ -235,7 +239,7 @@ class SPipeline:
         rate_of_speech=1.0,
     ):
         text = smart_phonemize(text)
-        ref_s = self.get_style(pack, text)
+        ref_s = self.get_style(pack, text).to(self.device)
 
         tokens = text_cleaner(text)
         tokens.insert(0, 0)
@@ -298,6 +302,22 @@ if __name__ == "__main__":
     pipeline = SPipeline(config_path)
     # pipeline.__load_models("Style_Tsukasa_v02/Top_ckpt_24khz.pth")
     # text = "Hello, how are you?"
+    # pack = torch.load(
+    #     "/home/ubuntu/app/Tsukasa_Speech/sayaka/neutral/style.pt", map_location="cpu"
+    # )
+    text = "ひえ、高速道路でアクシデントが起こったようです。もしかしたら私たちにも影響があるかもしれません。"
+    import time
+
+    for emotion in ["neutral", "happy", "sorrow", "anger", "fear", "surprise"]:
+        start_time = time.time()
+        pack = torch.load(
+            f"/home/ubuntu/app/Tsukasa_Speech/sayaka/{emotion}/style.pt",
+            map_location="cpu",
+        )
+        wav = pipeline.generate(text, pack)
+        end_time = time.time()
+        print(f"Time taken: {end_time - start_time} seconds")
+        sf.write(f"test_{emotion}.wav", wav, 24000)
     # pack = {"0": "0"}
     # out = pipeline.generate(text, pack)
     # print(out.shape)
